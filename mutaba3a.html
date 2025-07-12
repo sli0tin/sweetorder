@@ -5,26 +5,179 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>متابعة نواقص الفروع | Branch Shortage Tracking</title>
 <style>
-  /* نفس التنسيقات السابقة */
-  body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: #f4f4f4; direction: rtl;}
-  header {background: #fff; padding: 20px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-size: 1.3rem;}
-  .branches-container {display: flex; gap: 10px; padding: 20px;}
-  .branch-section {flex: 1; background: #fff; padding: 15px; border-radius: 8px; max-height: 80vh; overflow-y: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
-  .branch-section h2 {text-align: center; margin-top: 0;}
-  .product-card {border: 1px solid #ccc; padding: 10px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
-  .product-card.red {background-color: #fdd;}
-  .product-card.green {background-color: #dfd;}
-  .product-info {text-align: right; max-width: 60%;}
-  .product-info span {display: inline-block; margin-left: 8px; font-style: italic; color: #555; font-size: 0.9rem;}
-  .product-info .date {font-size: 0.75rem; color: #333; margin-top: 4px;}
-  .product-actions {display: flex; align-items: center; gap: 10px;}
-  .editable-added {width: 60px; padding: 3px 6px; font-size: 0.9rem; border-radius: 4px; border: 1px solid #ccc; text-align: center;}
-  .whatsapp-btn {margin-top: 10px; background: #25d366; color: white; border: none; padding: 12px; font-size: 1rem; border-radius: 8px; cursor: pointer; width: 90%; max-width: 250px; display: block; margin-left: auto; margin-right: auto;}
+  body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; padding: 0;
+    background: #f4f4f4;
+    direction: rtl;
+  }
+  header {
+    background: #fff;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    position: relative;
+    font-size: 1.3rem;
+  }
+  .branches-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 20px;
+    gap: 10px;
+  }
+  .branch-section {
+    flex: 1;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-height: 80vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .branch-section h2 {
+    text-align: center;
+    margin-top: 0;
+    font-weight: bold;
+  }
+  .product-card {
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: default;
+  }
+  .product-card.red {
+    background-color: #fdd;
+  }
+  .product-card.green {
+    background-color: #dfd;
+  }
+  .product-info {
+    text-align: right;
+    max-width: 65%;
+    line-height: 1.2;
+  }
+  .product-info span {
+    display: inline-block;
+    margin-left: 8px;
+    font-style: italic;
+    color: #555;
+    font-size: 0.9rem;
+  }
+  .product-info .date {
+    font-size: 0.75rem;
+    color: #333;
+    margin-top: 4px;
+  }
+  .product-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .add-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s ease;
+  }
+  .add-btn:hover {
+    background-color: #2980b9;
+  }
+  .whatsapp-btn {
+    margin-top: auto;
+    background: #25d366;
+    color: white;
+    border: none;
+    padding: 12px;
+    font-size: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    align-self: center;
+    width: 90%;
+    max-width: 250px;
+  }
+  #alarmSound {
+    display: none;
+  }
+  #stopAlarmBtn {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    padding: 10px 20px;
+    background: red;
+    color: white;
+    font-size: 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: none;
+    z-index: 10001;
+  }
+  /* نافذة اختيار الكمية */
+  #quantityModal {
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+  }
+  #quantityModal .modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 320px;
+    text-align: center;
+  }
+  #quantityModal label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+  #quantityModal select {
+    width: 100%;
+    padding: 8px;
+    font-size: 1rem;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+  #quantityModal button {
+    margin-top: 15px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  #quantityAddBtn {
+    background-color: #27ae60;
+    color: white;
+    margin-right: 10px;
+  }
+  #quantityCancelBtn {
+    background-color: #c0392b;
+    color: white;
+  }
 </style>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+  // إعداد Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyBoUv5YTd2ZalQ_mdkOVZF13ps_XYvmtBk",
     authDomain: "shortage-tracker-f0054.firebaseapp.com",
@@ -38,6 +191,7 @@
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
 
+  // ترجمة المنتجات (يدويًا هنا)
   const translations = {
  "كعك فلسطيني": "Palestinian Kaak (½ kg)",
   "معمول تمر الحبوب الاربعة حبوب كاملة": "Date Maamoul with Four Whole Grains",
@@ -124,19 +278,39 @@
   "بسكويت موالح الكيتو": "Keto Savory Biscuits-Mawalyah"
 };
 
+
+  // المجموعات لكل فرع لتخزين البيانات محليًا (في الذاكرة فقط)
+  // كل منتج يحتوي على: requested, added, date, ids (مصفوفة معرّفات الطلبات التي تحتوي المنتج)
   let yarmookOrders = {};
   let abuOrders = {};
 
+  // لتخزين بيانات الطلبات المفصلة من Firebase مع معرفها (orderId)
+  let rawOrders = {};
+
+  // العناصر الأساسية في الصفحة
   const yarmookSection = document.getElementById("yarmookSection");
   const abuSection = document.getElementById("abuSection");
   const yarmookSendBtn = document.getElementById("yarmookSendBtn");
   const abuSendBtn = document.getElementById("abuSendBtn");
 
-  function renderBranchOrders(branchOrders, container, branchName) {
+  // الصوت والتنبيه
+  const alarmSound = document.getElementById("alarmSound");
+  const stopAlarmBtn = document.getElementById("stopAlarmBtn");
+
+  // نافذة اختيار الكمية
+  const quantityModal = document.getElementById("quantityModal");
+  const quantitySelect = document.getElementById("quantitySelect");
+  const quantityAddBtn = document.getElementById("quantityAddBtn");
+  const quantityCancelBtn = document.getElementById("quantityCancelBtn");
+  let currentEditing = null;
+
+  // عرض المنتجات في القسم المعني بناءً على البيانات (يتم تجميع الكميات)
+  function renderBranchOrders(branchOrders, container) {
     container.innerHTML = "";
-    for (const [productName, { requested, added, date, ids }] of Object.entries(branchOrders)) {
+    for (const [productName, { requested, added, date }] of Object.entries(branchOrders)) {
+      const totalQty = requested;
+      const addedQty = added;
       const remainingQty = requested - added;
-      const productEn = translations[productName] || "";
 
       const card = document.createElement("div");
       card.classList.add("product-card");
@@ -144,63 +318,68 @@
       else card.classList.add("green");
       card.setAttribute("data-product", productName);
 
+      const productEn = translations[productName] || "";
+
       card.innerHTML = `
         <div class="product-info">
           <div>${productName} <span>${productEn}</span></div>
-          <div>الكمية المطلوبة | Requested: ${requested}</div>
-          <div>
-            الكمية المضافة | Added: 
-            <input type="number" min="0" max="${requested}" value="${added}" class="editable-added" />
-          </div>
+          <div>الكمية المطلوبة | Requested: ${totalQty}</div>
+          <div>الكمية المضافة | Added: ${addedQty}</div>
           <div class="date">${new Date(date).toLocaleString("ar-EG")}</div>
-        </div>`;
-
+        </div>
+        <div class="product-actions">
+          <button class="add-btn">إضافة | Add</button>
+        </div>
+      `;
       container.appendChild(card);
 
-      // حدث تعديل الكمية المضافة
-      const addedInput = card.querySelector(".editable-added");
-      addedInput.addEventListener("change", async (e) => {
-        let newAdded = parseInt(e.target.value);
-        if (isNaN(newAdded) || newAdded < 0) {
-          alert("الرجاء إدخال رقم صحيح أكبر أو يساوي صفر");
-          e.target.value = added;
-          return;
-        }
-        if (newAdded > requested) {
-          alert("الكمية المضافة لا يمكن أن تزيد عن الكمية المطلوبة");
-          e.target.value = added;
-          return;
-        }
-
-        // تحديث البيانات في الذاكرة مؤقتًا
-        branchOrders[productName].added = newAdded;
-
-        // تحديث الكمية في Firebase
-        // ابحث عن جميع الطلبات التي تحتوي هذا المنتج ضمن هذا الفرع وحدث الكمية المضافة
-        const ordersRef = ref(db, "orders");
-        onValue(ordersRef, (snapshot) => {
-          snapshot.forEach(async (childSnap) => {
-            const order = childSnap.val();
-            const key = childSnap.key;
-            if(order.branch === branchName && order.order && order.order[productName] !== undefined){
-              // حدث الكمية المضافة ضمن حقل "added" (يجب أن تكون موجودة ضمن بياناتك)
-              // إن لم تكن موجودة ضمن البيانات الأصلية، يمكن حفظها ضمن حقل جديد تحت الطلب.
-              // هنا مثال بسيط: تخزين الكمية المضافة داخل حقل "addedOrder"
-              // يمكنك تعديل ذلك حسب هيكل بياناتك
-              await update(ref(db, `orders/${key}`), {
-                [`addedOrder/${productName}`]: newAdded
-              });
-            }
-          });
-        }, { onlyOnce: true });
-
-        // إعادة عرض الطلبات لتحديث الواجهة
-        renderBranchOrders(branchOrders, container, branchName);
-      });
+      const addBtn = card.querySelector(".add-btn");
+      addBtn.addEventListener("click", () => openQuantityModal(branchOrders, productName, container));
     }
   }
 
-  function sendWhatsApp(branchName, branchOrders) {
+  // فتح نافذة اختيار الكمية
+  function openQuantityModal(branchOrders, productName, container) {
+    currentEditing = { branchOrders, productName, container };
+    const maxQty = branchOrders[productName].requested - branchOrders[productName].added;
+    quantitySelect.innerHTML = "";
+    for(let i=0; i<=Math.min(maxQty, 100); i++){
+      quantitySelect.innerHTML += `<option value="${i}">${i}</option>`;
+    }
+    quantityModal.style.display = "flex";
+  }
+
+  // إغلاق نافذة اختيار الكمية
+  function closeQuantityModal() {
+    quantityModal.style.display = "none";
+    currentEditing = null;
+  }
+
+  // إضافة الكمية المحددة إلى الطلب
+  quantityAddBtn.addEventListener("click", () => {
+    if(!currentEditing) return;
+    const qty = parseInt(quantitySelect.value);
+    if(qty <= 0){
+      alert("الرجاء اختيار كمية أكبر من صفر");
+      return;
+    }
+
+    const { branchOrders, productName, container } = currentEditing;
+    const productData = branchOrders[productName];
+
+    productData.added += qty;
+    if(productData.added > productData.requested){
+      productData.added = productData.requested;
+    }
+
+    renderBranchOrders(branchOrders, container);
+    closeQuantityModal();
+  });
+
+  quantityCancelBtn.addEventListener("click", closeQuantityModal);
+
+  // إرسال رسالة واتساب للفرع مع تحديث الكميات في Firebase
+  async function sendWhatsApp(branchName, branchOrders) {
     const greenProducts = [];
     const redProducts = [];
 
@@ -230,29 +409,74 @@
 
     window.open(`https://wa.me/${phone}?text=${encodedMsg}`, "_blank");
 
-    for(const productName in branchOrders){
-      branchOrders[productName].requested -= branchOrders[productName].added;
-      if(branchOrders[productName].requested < 0) branchOrders[productName].requested = 0;
-      branchOrders[productName].added = 0;
+    // بعد الإرسال، نقوم بتحديث الكميات في Firebase لكل طلب من الطلبات التي تحتوي المنتج
+
+    // 1- نجمع تحديثات للطلبات (orderId) بخصم الكميات المضافة لكل منتج
+    const updates = {};
+
+    // نكرر على كل منتج
+    for(const [productName, productData] of Object.entries(branchOrders)) {
+      if(productData.added <= 0) continue;
+
+      const qtyToRemove = productData.added;
+
+      // نوزع كمية الحذف على كل الطلبات التي تحتوي المنتج
+      // طلبات المنتج محفوظة في productData.ids
+      for(const orderInfo of productData.ids) {
+        // orderInfo: { orderId, qtyInOrder }
+        const { orderId, qtyInOrder } = orderInfo;
+        if(!updates[orderId]) updates[orderId] = {};
+
+        // نخصم من الطلب حسب المتاح في هذا الطلب أو حسب الكمية المتبقية للحذف
+        const deductQty = Math.min(qtyToRemove, qtyInOrder);
+
+        // مهم: نفترض أن مسار الطلب فيه object order بالمنتجات
+        updates[orderId][`order/${productName}`] = qtyInOrder - deductQty;
+
+        // نقص من qtyToRemove كمية الخصم التي تمت
+        productData.added -= deductQty;
+
+        if(productData.added <= 0) break;
+      }
     }
 
-    if(branchName === "يرموك") renderBranchOrders(yarmookOrders, yarmookSection, "يرموك");
-    else if(branchName === "أبو الحصانية") renderBranchOrders(abuOrders, abuSection, "أبو الحصانية");
+    // 2- تنفيذ تحديثات في Firebase لكل طلب
+    try {
+      const updatePromises = Object.entries(updates).map(async ([orderId, changes]) => {
+        const orderRef = ref(db, 'orders/' + orderId);
+        // فقط المنتجات التي حدثت في الطلب
+        await update(orderRef, changes);
+      });
+
+      await Promise.all(updatePromises);
+
+    } catch(error) {
+      alert("خطأ أثناء تحديث قاعدة البيانات: " + error.message);
+    }
+
+    // 3- إعادة جلب البيانات بعد التحديث لعرضها محدثة
+    fetchOrders();
   }
 
   yarmookSendBtn.addEventListener("click", () => sendWhatsApp("يرموك", yarmookOrders));
   abuSendBtn.addEventListener("click", () => sendWhatsApp("أبو الحصانية", abuOrders));
 
+  // جلب البيانات من Firebase وتخزينها بشكل مهيأ للعرض والتحديث
   function fetchOrders() {
     const ordersRef = ref(db, 'orders');
     onValue(ordersRef, (snapshot) => {
       yarmookOrders = {};
       abuOrders = {};
+      rawOrders = {};
+
       snapshot.forEach(childSnap => {
-        const order = childSnap.val();
-        const branch = order.branch;
-        const orderObj = order.order;
-        const timestamp = order.timestamp || Date.now();
+        const orderId = childSnap.key;
+        const orderData = childSnap.val();
+        const branch = orderData.branch;
+        const orderObj = orderData.order || {};
+        const timestamp = orderData.timestamp || Date.now();
+
+        rawOrders[orderId] = orderData;
 
         for (const [productName, qty] of Object.entries(orderObj)) {
           if(qty <= 0) continue;
@@ -262,27 +486,35 @@
           else return;
 
           if(!targetOrders[productName]){
-            // نقرأ "added" من حقل "addedOrder" لو موجود، أو صفر
-            const addedQty = (order.addedOrder && order.addedOrder[productName]) || 0;
             targetOrders[productName] = {
               requested: qty,
-              added: addedQty,
+              added: 0,
               date: timestamp,
               ids: []
             };
           } else {
             targetOrders[productName].requested += qty;
-            // تحديث الكمية المضافة حسب الحاجة
-            const addedQty = (order.addedOrder && order.addedOrder[productName]) || 0;
-            targetOrders[productName].added += addedQty;
           }
+          // تخزين معرف الطلب مع كمية المنتج في هذا الطلب
+          targetOrders[productName].ids.push({ orderId, qtyInOrder: qty });
         }
       });
 
-      renderBranchOrders(yarmookOrders, yarmookSection, "يرموك");
-      renderBranchOrders(abuOrders, abuSection, "أبو الحصانية");
+      renderBranchOrders(yarmookOrders, yarmookSection);
+      renderBranchOrders(abuOrders, abuSection);
+
+      if(Object.keys(yarmookOrders).length > 0 || Object.keys(abuOrders).length > 0){
+        alarmSound.play();
+        stopAlarmBtn.style.display = "block";
+      }
     });
   }
+
+  stopAlarmBtn.addEventListener("click", () => {
+    alarmSound.pause();
+    alarmSound.currentTime = 0;
+    stopAlarmBtn.style.display = "none";
+  });
 
   window.onload = () => {
     fetchOrders();
@@ -291,22 +523,47 @@
 </head>
 <body>
 
-<header>متابعة نواقص الفروع | Branch Shortage Tracking</header>
+<header>
+  متابعة نواقص الفروع | Branch Shortage Tracking
+</header>
 
 <div class="branches-container">
 
   <section class="branch-section" id="yarmookBranch">
     <h2>نواقص فرع اليرموك | Yarmook Branch Shortages</h2>
-    <div id="yarmookSection"></div>
+    <div id="yarmookSection">
+      <!-- منتجات اليرموك تظهر هنا -->
+    </div>
     <button id="yarmookSendBtn" class="whatsapp-btn">ارسال نواقص اليرموك | Send Yarmook Shortages</button>
   </section>
 
   <section class="branch-section" id="abuBranch">
-    <h2>نواقص فرع ابو الحصانية | Abu Al-Hasania Branch Shortages</h2>
-    <div id="abuSection"></div>
-    <button id="abuSendBtn" class="whatsapp-btn">ارسال نواقص ابو الحصانية | Send Abu Al-Hasania Shortages</button>
+    <h2>نواقص فرع أبو الحصانية | Abu Al-Hasania Branch Shortages</h2>
+    <div id="abuSection">
+      <!-- منتجات أبو الحصانية تظهر هنا -->
+    </div>
+    <button id="abuSendBtn" class="whatsapp-btn">ارسال نواقص أبو الحصانية | Send Abu Al-Hasania Shortages</button>
   </section>
 
+</div>
+
+<audio id="alarmSound" loop>
+  <source src="alarm.mp3" type="audio/mpeg">
+  متصفحك لا يدعم الصوت.
+</audio>
+
+<button id="stopAlarmBtn">ايقاف التنبيه</button>
+
+<!-- نافذة اختيار الكمية -->
+<div id="quantityModal">
+  <div class="modal-content">
+    <label for="quantitySelect">اختر الكمية المضافة</label>
+    <select id="quantitySelect"></select>
+    <div style="margin-top: 15px;">
+      <button id="quantityAddBtn">تأكيد الإضافة</button>
+      <button id="quantityCancelBtn">إلغاء</button>
+    </div>
+  </div>
 </div>
 
 </body>
