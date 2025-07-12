@@ -1,246 +1,584 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>متابعة نواقص الفروع</title>
-  <style>
-    body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0; padding: 0;
-      background: #f4f4f4;
-      direction: rtl;
-    }
-    header {
-      background: #fff;
-      padding: 20px;
-      text-align: center;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      position: relative;
-    }
-    .lang-switch {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      cursor: pointer;
-      padding: 6px 10px;
-      border: 1px solid #888;
-      border-radius: 6px;
-      background: #eee;
-      user-select: none;
-    }
-    .branches-container {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      padding: 20px;
-      gap: 10px;
-    }
-    .branch-section {
-      flex: 1;
-      background: #fff;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      max-height: 80vh;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-    .branch-section h2 {
-      text-align: center;
-      margin-top: 0;
-    }
-    .product-card {
-      border: 1px solid #ccc;
-      padding: 10px;
-      border-radius: 6px;
-      margin-bottom: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      cursor: default;
-    }
-    .product-card.red {
-      background-color: #fdd;
-    }
-    .product-card.green {
-      background-color: #dfd;
-    }
-    .product-info {
-      text-align: right;
-      max-width: 75%;
-    }
-    .product-info .en {
-      font-size: 0.85rem;
-      color: #555;
-      font-style: italic;
-    }
-    .product-info .qty, .product-info .date {
-      font-size: 0.85rem;
-      color: #333;
-      margin-top: 4px;
-    }
-    .add-btn {
-      background: #3498db;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      user-select: none;
-      transition: background-color 0.3s ease;
-    }
-    .add-btn:hover {
-      background-color: #2980b9;
-    }
-    .whatsapp-btn {
-      margin-top: auto;
-      background: #25d366;
-      color: white;
-      border: none;
-      padding: 12px;
-      font-size: 1rem;
-      border-radius: 8px;
-      cursor: pointer;
-      align-self: center;
-      width: 90%;
-      max-width: 250px;
-    }
-    #alarmSound {
-      display: none;
-    }
-    #stopAlarmBtn {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      padding: 10px 20px;
-      background: red;
-      color: white;
-      font-size: 1rem;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      display: none;
-      z-index: 10001;
-    }
-  </style>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-    const app = initializeApp({
-      apiKey: "AIzaSyBoUv5YTd2ZalQ_mdkOVZF13ps_XYvmtBk",
-      authDomain: "shortage-tracker-f0054.firebaseapp.com",
-      projectId: "shortage-tracker-f0054",
-      storageBucket: "shortage-tracker-f0054.appspot.com",
-      messagingSenderId: "61596664058",
-      appId: "1:61596664058:web:77ee76208afe58a0b20943"
-    });
-
-    const db = getFirestore(app);
-
-    const alarmSound = document.getElementById("alarmSound");
-    const stopAlarmBtn = document.getElementById("stopAlarmBtn");
-    const langSwitch = document.getElementById("langSwitch");
-    const yarmookTitle = document.getElementById("yarmookTitle");
-    const abuTitle = document.getElementById("abuTitle");
-    const yarmookBtn = document.getElementById("yarmookBtn");
-    const abuBtn = document.getElementById("abuBtn");
-
-    let lang = "ar";
-    const texts = {
-      ar: {
-        yarmook: "نواقص فرع اليرموك",
-        abu: "نواقص فرع أبو الحصانية",
-        sendYarmook: "إرسال نواقص اليرموك",
-        sendAbu: "إرسال نواقص أبو الحصانية",
-        stopAlarm: "إيقاف التنبيه",
-        langSwitch: "English"
-      },
-      en: {
-        yarmook: "Yarmook Branch Shortages",
-        abu: "Abu Al-Hasaniya Branch Shortages",
-        sendYarmook: "Send Yarmook Shortages",
-        sendAbu: "Send Abu Shortages",
-        stopAlarm: "Stop Alarm",
-        langSwitch: "العربية"
-      }
-    };
-
-    function updateTexts() {
-      document.documentElement.lang = lang;
-      document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
-      langSwitch.textContent = texts[lang].langSwitch;
-      yarmookTitle.textContent = texts[lang].yarmook;
-      abuTitle.textContent = texts[lang].abu;
-      yarmookBtn.textContent = texts[lang].sendYarmook;
-      abuBtn.textContent = texts[lang].sendAbu;
-      stopAlarmBtn.textContent = texts[lang].stopAlarm;
-    }
-
-    langSwitch.onclick = () => {
-      lang = lang === "ar" ? "en" : "ar";
-      updateTexts();
-    };
-
-    let isFirstLoad = true;
-    let prevYarmookIds = [];
-    let prevAbuIds = [];
-
-    function playAlarm() {
-      alarmSound.play();
-      stopAlarmBtn.style.display = "block";
-    }
-
-    stopAlarmBtn.onclick = () => {
-      alarmSound.pause();
-      alarmSound.currentTime = 0;
-      stopAlarmBtn.style.display = "none";
-    };
-
-    function checkNewData(snapshot, prevIds) {
-      const currentIds = snapshot.docs.map(doc => doc.id);
-      const hasNew = currentIds.some(id => !prevIds.includes(id));
-      return { currentIds, hasNew };
-    }
-
-    onSnapshot(collection(db, "yarmook"), snapshot => {
-      const { currentIds, hasNew } = checkNewData(snapshot, prevYarmookIds);
-      if (!isFirstLoad && hasNew) playAlarm();
-      prevYarmookIds = currentIds;
-    });
-
-    onSnapshot(collection(db, "abuhasaniya"), snapshot => {
-      const { currentIds, hasNew } = checkNewData(snapshot, prevAbuIds);
-      if (!isFirstLoad && hasNew) playAlarm();
-      prevAbuIds = currentIds;
-      isFirstLoad = false;
-    });
-
-    updateTexts();
-  </script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>متابعة نواقص الفروع</title>
+<style>
+  body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; padding: 0;
+    background: #f4f4f4;
+    direction: rtl;
+  }
+  header {
+    background: #fff;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    position: relative;
+  }
+  .lang-switch {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border: 1px solid #888;
+    border-radius: 6px;
+    background: #eee;
+    user-select: none;
+  }
+  .branches-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 20px;
+    gap: 10px;
+  }
+  .branch-section {
+    flex: 1;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-height: 80vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .branch-section h2 {
+    text-align: center;
+    margin-top: 0;
+  }
+  .product-card {
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: default;
+  }
+  .product-card.red {
+    background-color: #fdd;
+  }
+  .product-card.green {
+    background-color: #dfd;
+  }
+  .product-info {
+    text-align: right;
+    max-width: 75%;
+  }
+  .product-info .en {
+    font-size: 0.85rem;
+    color: #555;
+    font-style: italic;
+  }
+  .product-info .qty, .product-info .added {
+    font-size: 0.85rem;
+    color: #333;
+    margin-top: 4px;
+  }
+  .add-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s ease;
+  }
+  .add-btn:hover {
+    background-color: #2980b9;
+  }
+  .whatsapp-btn {
+    margin-top: auto;
+    background: #25d366;
+    color: white;
+    border: none;
+    padding: 12px;
+    font-size: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    align-self: center;
+    width: 90%;
+    max-width: 250px;
+  }
+  #alarmSound {
+    display: none;
+  }
+  #stopAlarmBtn {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    padding: 10px 20px;
+    background: red;
+    color: white;
+    font-size: 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: none;
+    z-index: 10001;
+  }
+  /* نافذة منبثقة */
+  #popupOverlay {
+    display: none;
+    position: fixed;
+    top:0; right:0; bottom:0; left:0;
+    background: rgba(0,0,0,0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+  }
+  #popup {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 320px;
+    text-align: center;
+  }
+  #popup label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+  }
+  #quantitySelect {
+    width: 100%;
+    padding: 8px;
+    font-size: 1rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    margin-bottom: 15px;
+  }
+  #popup button {
+    padding: 8px 16px;
+    font-size: 1rem;
+    margin: 0 10px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+  }
+  #popupAddBtn {
+    background-color: #27ae60;
+    color: white;
+  }
+  #popupCancelBtn {
+    background-color: #c0392b;
+    color: white;
+  }
+</style>
 </head>
 <body>
-  <header>
-    <button id="langSwitch" class="lang-switch">English</button>
-  </header>
-  <div class="branches-container">
-    <div class="branch-section">
-      <h2 id="yarmookTitle">نواقص فرع اليرموك</h2>
-      <div id="yarmookList"></div>
-      <button id="yarmookBtn" class="whatsapp-btn">إرسال نواقص اليرموك</button>
-    </div>
-    <div class="branch-section">
-      <h2 id="abuTitle">نواقص فرع أبو الحصانية</h2>
-      <div id="abuList"></div>
-      <button id="abuBtn" class="whatsapp-btn">إرسال نواقص أبو الحصانية</button>
+<header>
+  <button id="langSwitch" class="lang-switch">English</button>
+</header>
+<div class="branches-container">
+  <div class="branch-section" id="yarmookSection">
+    <h2 id="yarmookTitle">نواقص فرع اليرموك</h2>
+    <div id="yarmookList"></div>
+    <button id="sendYarmookBtn" class="whatsapp-btn">إرسال نواقص اليرموك</button>
+  </div>
+  <div class="branch-section" id="abuSection">
+    <h2 id="abuTitle">نواقص فرع أبو الحصانية</h2>
+    <div id="abuList"></div>
+    <button id="sendAbuBtn" class="whatsapp-btn">إرسال نواقص أبو الحصانية</button>
+  </div>
+</div>
+
+<audio id="alarmSound" src="alarm.mp3" loop></audio>
+<button id="stopAlarmBtn">إيقاف التنبيه</button>
+
+<!-- نافذة منبثقة لإضافة الكمية -->
+<div id="popupOverlay">
+  <div id="popup">
+    <label id="popupLabel">اختر الكمية:</label>
+    <select id="quantitySelect"></select>
+    <div>
+      <button id="popupAddBtn">إضافة</button>
+      <button id="popupCancelBtn">إلغاء</button>
     </div>
   </div>
+</div>
 
-  <audio id="alarmSound" src="alarm.mp3" loop></audio>
-  <button id="stopAlarmBtn">إيقاف التنبيه</button>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// إعداد Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyBoUv5YTd2ZalQ_mdkOVZF13ps_XYvmtBk",
+  authDomain: "shortage-tracker-f0054.firebaseapp.com",
+  databaseURL: "https://shortage-tracker-f0054-default-rtdb.firebaseio.com",
+  projectId: "shortage-tracker-f0054",
+  storageBucket: "shortage-tracker-f0054.appspot.com",
+  messagingSenderId: "61596664058",
+  appId: "1:61596664058:web:77ee76208afe58a0b20943"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// تعريف الفروع وأرقام الواتساب
+const branches = {
+  yarmook: {
+    name: "اليرموك",
+    phone: "96565162277",
+    products: {}
+  },
+  abu: {
+    name: "أبو الحصانية",
+    phone: "96599176512",
+    products: {}
+  }
+};
+
+// تخزين الكميات المضافة محلياً
+const addedQuantities = {
+  yarmook: {},
+  abu: {}
+};
+
+const alarmSound = document.getElementById("alarmSound");
+const stopAlarmBtn = document.getElementById("stopAlarmBtn");
+const langSwitch = document.getElementById("langSwitch");
+const yarmookTitle = document.getElementById("yarmookTitle");
+const abuTitle = document.getElementById("abuTitle");
+const yarmookBtn = document.getElementById("sendYarmookBtn");
+const abuBtn = document.getElementById("sendAbuBtn");
+
+let lang = "ar";
+const texts = {
+  ar: {
+    yarmook: "نواقص فرع اليرموك",
+    abu: "نواقص فرع أبو الحصانية",
+    sendYarmook: "إرسال نواقص اليرموك",
+    sendAbu: "إرسال نواقص أبو الحصانية",
+    stopAlarm: "إيقاف التنبيه",
+    langSwitch: "English"
+  },
+  en: {
+    yarmook: "Yarmook Branch Shortages",
+    abu: "Abu Al-Hasaniya Branch Shortages",
+    sendYarmook: "Send Yarmook Shortages",
+    sendAbu: "Send Abu Shortages",
+    stopAlarm: "Stop Alarm",
+    langSwitch: "العربية"
+  }
+};
+
+function updateTexts() {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  langSwitch.textContent = texts[lang].langSwitch;
+  yarmookTitle.textContent = texts[lang].yarmook;
+  abuTitle.textContent = texts[lang].abu;
+  yarmookBtn.textContent = texts[lang].sendYarmook;
+  abuBtn.textContent = texts[lang].sendAbu;
+  stopAlarmBtn.textContent = texts[lang].stopAlarm;
+}
+
+langSwitch.onclick = () => {
+  lang = lang === "ar" ? "en" : "ar";
+  updateTexts();
+};
+
+updateTexts();
+
+let isFirstLoad = true;
+const prevOrdersIds = new Set();
+
+// تحميل الطلبات من Firebase
+function loadOrders() {
+  const ordersRef = ref(db, "orders");
+  onValue(ordersRef, snapshot => {
+    if (!snapshot.exists()) return;
+    const data = snapshot.val();
+
+    // تفريغ البيانات القديمة
+    branches.yarmook.products = {};
+    branches.abu.products = {};
+
+    // فرز الطلبات حسب الفروع وتجميع الكميات
+    for (const key in data) {
+      const order = data[key];
+      const branch = order.branch;
+      if (!branch) continue;
+      const products = order.order;
+      if (!products) continue;
+
+      for (const productName in products) {
+        const qty = products[productName];
+        if (branch === "يرموك") {
+          branches.yarmook.products[productName] = (branches.yarmook.products[productName] || 0) + qty;
+        } else if (branch === "أبو الحصانية") {
+          branches.abu.products[productName] = (branches.abu.products[productName] || 0) + qty;
+        }
+      }
+    }
+    renderBranch("yarmook");
+    renderBranch("abu");
+
+    // عند أول تحميل يتم تشغيل التنبيه
+    if (isFirstLoad) {
+      if (
+        Object.keys(branches.yarmook.products).length > 0 ||
+        Object.keys(branches.abu.products).length > 0
+      ) {
+        alarmSound.play().catch(() => {});
+        stopAlarmBtn.style.display = "block";
+      }
+      isFirstLoad = false;
+    }
+  });
+}
+
+// رسم بطاقات المنتجات
+function renderBranch(branchKey) {
+  const container = branchKey === "yarmook" ? document.getElementById("yarmookList") : document.getElementById("abuList");
+  container.innerHTML = "";
+
+  const products = branches[branchKey].products;
+  if (!products || Object.keys(products).length === 0) {
+    container.innerHTML = `<p style="text-align:center; color:#666;">${lang === "ar" ? "لا توجد طلبات" : "No orders"}</p>`;
+    return;
+  }
+
+  for (const productName in products) {
+    const totalQty = products[productName];
+    const addedQty = addedQuantities[branchKey][productName] || 0;
+    const remainingQty = totalQty - addedQty;
+
+    const card = document.createElement("div");
+    card.className = "product-card";
+    card.classList.add(addedQty === 0 ? "red" : (remainingQty <= 0 ? "green" : "red"));
+    card.dataset.branch = branchKey;
+    card.dataset.product = productName;
+    card.dataset.totalQty = totalQty;
+    card.dataset.addedQty = addedQty;
+
+    // محتوى البطاقة
+    card.innerHTML = `
+      <div class="product-info">
+        <div class="ar">${productName}</div>
+        <div class="en">${getEnglishName(productName)}</div>
+        <div class="qty">${lang === "ar" ? "الكمية المطلوبة: " : "Required Qty: "}${totalQty}</div>
+        <div class="added">${lang === "ar" ? "المضافة: " : "Added: "}${addedQty}</div>
+        <div class="remaining">${lang === "ar" ? "الباقي: " : "Remaining: "}${remainingQty}</div>
+      </div>
+      <button class="add-btn">${lang === "ar" ? "إضافة" : "Add"}</button>
+    `;
+
+    container.appendChild(card);
+  }
+}
+
+const enNames = {
+  "كعك فلسطيني": "Palestinian Kaak (½ kg)",
+  "معمول تمر الحبوب الاربعة حبوب كاملة": "Date Maamoul with Four Whole Grains",
+  "معمول تمر نجوم وهلال": "Date Ma'amoul in Star and Crescent Shapes",
+  "معمول السندويشة": "Sandwich Maamoul",
+  "معمول تمر نباتى": "Vegan Date Maamoul",
+  "معمول التمر بالجوز": "Date and Walnut Maamoul",
+  "معمول الشوفان": "Oatmeal Ma'amoul (1/2 kg)",
+  "نصف كيلو معمول أصابع": "Maamoul Fingers (½ kg)",
+  "قراقيش السماق": "Sumac Crackers",
+  "قراقيش الكركم": "Turmeric Crackers",
+  "قراقيش الشعير بالزعتر الاخضر": "Barley Crackers with Fresh Thyme",
+  "قراقيش محمرة بالشمندر": "Beetroot Toast Crackers",
+  "قراقيش الزعتر بزيت الزيتون": "Thyme Olive Oil Crackers",
+  "قراقيش بصل اخضر و زيتون": "Spring Onion and Olive Crackers",
+  "قراقيش الخضار بالثوم": "Vegetable Crackers with Garlic",
+  "العصا الايطالي بالكينوا وبذور الشيا": "Italian Sticks with Quinoa and Chia Seeds",
+  "عصا الخبز الايطالي بالزعتر": "Italian Breadsticks with Thyme",
+  "عصا الخبز الايطالي بالحبوب الخمسة": "Italian Breadsticks with Five Grains",
+  "عصا الخبز الايطالى بالشوفان واليانسون": "Oatmeal and Anise Italian Breadsticks",
+  "شابورة جوز الهند": "Coconut Rusk",
+  "شابورة الفواكة المجففة": "Rusk with Dried Fruits",
+  "شابورة حبوب الدخن الخالية من الجلوتين": "Gluten-Free Millet Rusks",
+  "بقصم الينسون": "Anise Rusks",
+  "بقصم الزعتر": "Thyme Rusks",
+  "بقصم لسان الثور": "Bull's Tongue Rusks",
+  "حلقات الشيكولاتة الداكنة": "Dark Chocolate Rings",
+  "بسكويت حلقات المربى (4حبات)": "Jam-Filled Biscuit Rings (4 Pieces)",
+  "بسكويت الشيكولاتة بجوز الهند حبوب كاملة": "Whole Grain Chocolate and Coconut Biscuits",
+  "حلقات السمسمية": "Sesame Rings",
+  "حلقات السمسمية بالشيكولاتة": "Sesame Chocolate Rings",
+  "كرات السمسم": "Sesame Balls",
+  "كرات الشيكولاتة بالعسل والمكسرات": "Chocolate Balls with Honey and Nuts",
+  "كرات الشيكولاتة بالمكسرات كيتو": "Keto Chocolate Nut Balls",
+  "كوكيز الشوفان واللوز": "Oat and Almond Cookies",
+  "كوكيز الشيكولاتة باليقطين والشوفان واللوز والفول": "Pumpkin and Almond Chocolate Cookies",
+  "كوكيز كيتو": "Keto Cookies",
+  "بسكويت تركي بالحنطة": "Turkish Biscuits with Barley and Black Seeds",
+  "بسكويت تركي بالجاودر": "Turkish Biscuits with Caraway and Pumpkin Seeds",
+  "بسكويت تركي بالشعير": "Turkish Barley Biscuits with Pumpkin and Sunflower Seeds",
+  "بسكويت اليانسون حبوب كاملة": "Whole Grain Anise Biscuits",
+  "بسكويت اليانسون النباتى": "Vegan Anise Biscuits",
+  "بسكويت الدارسين حبوب كاملة": "Whole Grain Cinnamon Biscuits",
+  "بسكويت قشر الليمون والبرتقال": "Lemon and Orange Peel Biscuits",
+  "بسكويت الهيل": "Cardamom Biscuits",
+  "بسكويت الزعتر بالحبوب الكاملة والخميرة الطبيعية": "Whole Grain Thyme Biscuits with Natural Yeast",
+  "بسكويت ببذور الشيا": "Chia Seed Biscuits",
+  "بسكويت بذور الكتان المبرعم": "Sprouted Flax Seed Biscuits",
+  "بسكويت الحبوب الستة بالحبوب الكاملة": "Six-Grain Biscuits with Natural Yeast",
+  "مقرمشات الحبوب المنوعة": "Mixed Grain Crackers",
+  "برازق السمسم بالخميرة الطبيعية 3درزن": "Sesame Barazek with Natural Yeast (3 Dozen)",
+  "البرازق بالفول السودانى": "Peanut Barazek",
+  "الغريبة بالهيل": "Gharaiba with Cardamom",
+  "غريبة بالدراسين": "Cinnamon Gharaiba",
+  "معمول تمر صغير خالٍ من الجلوتين": "Small Gluten-Free Date Maamoul",
+  "بيتي فور أربع حبوب خالٍ من الجلوتين": "Gluten-Free Four-Grain Petit Fours",
+  "بيتي فور بالشوكولاتة الداكنة خالٍ من الجلوتين": "Gluten-Free Dark Chocolate Petit Four",
+  "بيتي فور باللوز خالٍ من الجلوتين": "Gluten-Free Almond Petit Four",
+  "بيتي فور بالتين خالٍ من الجلوتين": "Gluten-Free Fig Petit Four",
+  "بيتي فور بجوز الهند خالٍ من الجلوتين": "Gluten-Free Coconut Petit Four",
+  "بيتي فور بزبدة الفول السوداني خالٍ من الجلوتين": "Gluten-Free Peanut Butter Petit Four",
+  "بيتي فور بالزبيب خالٍ من الجلوتين": "Gluten-Free Raisin Petit Four",
+  "بيتي فور بعجينة المشمش – خالٍ من الجلوتين": "Apricot Paste Petit Four – Gluten-Free",
+  "بيتي فور بالمكسرات خالٍ من الجلوتين": "Gluten-Free Nut Petit Four",
+  "بيتي فور بالجوز خالٍ من الجلوتين": "Gluten-Free Walnut Petit Fours",
+  "برازق بالسمسم خالية من الجلوتين": "Gluten-Free Sesame Barazek",
+  "غريبة الدارسين خالي من الجلوتين": "Gluten-Free Cinnamon Ghraybeh",
+  "غريبة بالهيل والأرز الأسمر خالية من الجلوتين": "Gluten-Free Cardamom Ghraybeh with Brown Rice",
+  "بسكويت باليانسون خالٍ من الجلوتين": "Gluten-Free Anise Biscuits",
+  "بسكويت بجوز الهند والأرز البني والشوكولاتة الداكنة": "Brown Rice Coconut Dark Chocolate Biscuits",
+  "بسكويت كيتو صغير بجوز الهند (شكل قلب)": "Small Keto Coconut Biscuits (Heart)",
+  "بسكويت الهيل بالرز الأسمر الخالي من الجلوتين": "Gluten-Free Cardamom and Brown Rice Biscuits",
+  "بسكويت الدارسين الخالي من الجلوتين": "Gluten-Free Cinnamon Biscuits",
+  "بقصم الينسون خالي من الجلوتين": "Gluten-Free Anise Rusks",
+  "بقصم الزعتر خالي من الجلوتين": "Gluten-Free Thyme Rusks",
+  "حلوى الرياضيين بالفواكه المجففة حبوب كاملة": "Athlete’s Energy Bar with Dried Fruits and Whole Grains",
+  "حلوى الرياضيين بالشكولاتة الداكنة حبوب كاملة": "Athlete’s Energy Bar with Dark Chocolate and Whole Grains",
+  "حلوى الرياضيين بالتمر حبوب كاملة": "Whole Grain Date Energy Bars for Athletes",
+  "حلوى الرياضيين بالعسل حبوب كاملة": "Athlete’s Energy Bar with Honey and Whole Grains",
+  "حلوى الرياضيين بالشيكولاتة الداكنة الخالي من الجلوتين": "Gluten-Free Dark Chocolate Energy Bar for Athletes",
+  "حلوي الرياضيين بالتمر الخالي من الجلوتين": "Gluten-Free Date Energy Bar for Athletes",
+  "حلوى الرياضيين بالعسل الخالي من الجلوتين": "Gluten-Free Honey Energy Bar for Athletes",
+  "حلوي الرياضيين بالفواكه المجففة الخالي من الجلوتين": "Gluten-Free Dried Fruit Energy Bar for Athletes",
+  "بسكويت موالح الكيتو": "Keto Savory Biscuits-Mawalyah"
+};
+
+function getEnglishName(arName) {
+  return enNames[arName] || "";
+}
+
+// فتح نافذة إضافة الكمية
+const popupOverlay = document.getElementById("popupOverlay");
+const quantitySelect = document.getElementById("quantitySelect");
+const popupAddBtn = document.getElementById("popupAddBtn");
+const popupCancelBtn = document.getElementById("popupCancelBtn");
+const popupLabel = document.getElementById("popupLabel");
+
+let currentEditing = null; // { branchKey, productName, maxQty }
+
+function openPopup(branchKey, productName, maxQty) {
+  currentEditing = { branchKey, productName, maxQty };
+  popupLabel.textContent = (lang === "ar" ? `اختر كمية الإضافة لـ: ` : "Select add quantity for: ") + productName;
+  quantitySelect.innerHTML = "";
+  const limit = maxQty > 100 ? 100 : maxQty;
+  for (let i = 0; i <= limit; i++) {
+    const option = document.createElement("option");
+    option.value = i;
+    option.textContent = i;
+    quantitySelect.appendChild(option);
+  }
+  quantitySelect.value = 0;
+  popupOverlay.style.display = "flex";
+}
+
+popupAddBtn.onclick = () => {
+  const qtyToAdd = parseInt(quantitySelect.value);
+  if (qtyToAdd < 0) return;
+  if (!currentEditing) return;
+  const { branchKey, productName, maxQty } = currentEditing;
+  if (!addedQuantities[branchKey][productName]) addedQuantities[branchKey][productName] = 0;
+
+  const newAddedQty = addedQuantities[branchKey][productName] + qtyToAdd;
+  if (newAddedQty > maxQty) {
+    alert(lang === "ar" ? "لا يمكنك إضافة كمية أكبر من المطلوبة" : "Cannot add more than required quantity");
+    return;
+  }
+  addedQuantities[branchKey][productName] = newAddedQty;
+  popupOverlay.style.display = "none";
+  renderBranch(branchKey);
+  currentEditing = null;
+};
+
+popupCancelBtn.onclick = () => {
+  popupOverlay.style.display = "none";
+  currentEditing = null;
+};
+
+// التعامل مع ضغط زر إضافة داخل البطاقة
+document.body.addEventListener("click", e => {
+  if (e.target.classList.contains("add-btn")) {
+    const card = e.target.closest(".product-card");
+    if (!card) return;
+    const branchKey = card.dataset.branch;
+    const productName = card.dataset.product;
+    const totalQty = parseInt(card.dataset.totalQty);
+    const addedQty = addedQuantities[branchKey][productName] || 0;
+    const remainingQty = totalQty - addedQty;
+    if (remainingQty <= 0) {
+      alert(lang === "ar" ? "تمت إضافة كامل الكمية" : "Full quantity already added");
+      return;
+    }
+    openPopup(branchKey, productName, remainingQty);
+  }
+});
+
+// إرسال رسالة الواتساب
+function sendWhatsApp(branchKey) {
+  const branch = branches[branchKey];
+  const phone = branch.phone;
+  const added = addedQuantities[branchKey];
+  const products = branch.products;
+
+  let addedList = "";
+  let remainingList = "";
+
+  for (const product in products) {
+    const totalQty = products[product];
+    const addedQty = added[product] || 0;
+    const remainingQty = totalQty - addedQty;
+
+    if (addedQty > 0) {
+      addedList += `- ${product} (${getEnglishName(product)}) : ${addedQty}\n`;
+    }
+    if (remainingQty > 0) {
+      remainingList += `- ${product}\n`;
+    }
+  }
+
+  const msg = 
+`مرحباً، فرع ${branch.name}
+المنتجات التي سيتم ارسالها اليوم هي التالي:
+${addedList || "لا توجد منتجات مضافة"}
+
+---------
+المنتجات التي سيتم ارسالها عند التجهيز:
+${remainingList || "لا توجد منتجات ناقصة"}`;
+
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+  window.open(url, "_blank");
+}
+
+yarmookBtn.onclick = () => sendWhatsApp("yarmook");
+abuBtn.onclick = () => sendWhatsApp("abu");
+
+// تحميل البيانات عند بداية التحميل
+loadOrders();
+
+stopAlarmBtn.onclick = () => {
+  alarmSound.pause();
+  alarmSound.currentTime = 0;
+  stopAlarmBtn.style.display = "none";
+};
+</script>
 </body>
 </html>
