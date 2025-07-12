@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>متابعة نواقص الفروع</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0; padding: 0;
+      background: #f4f4f4;
+      direction: rtl;
+    }
+    header {
+      background: #fff;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    header img {
+      max-height: 80px;
+    }
+    .lang-switch {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      cursor: pointer;
+      padding: 6px 10px;
+      border: 1px solid #888;
+      border-radius: 6px;
+      background: #eee;
+      user-select: none;
+    }
+    .branches-container {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      padding: 20px;
+      gap: 10px;
+    }
+    .branch-section {
+      flex: 1;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      max-height: 80vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .branch-section h2 {
+      text-align: center;
+      margin-top: 0;
+    }
+    .product-card {
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #fdd;
+    }
+    .product-info {
+      text-align: right;
+    }
+    .product-info .en {
+      font-size: 0.85rem;
+      color: #555;
+      font-style: italic;
+    }
+    .product-info .qty {
+      font-size: 0.85rem;
+      color: #333;
+      margin-top: 4px;
+    }
+    .whatsapp-btn {
+      margin-top: 10px;
+      background: #25d366;
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      align-self: center;
+      width: 90%;
+      max-width: 250px;
+    }
+    #alarmSound {
+      display: none;
+    }
+    #stopAlarmBtn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      padding: 10px 20px;
+      background: red;
+      color: white;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      display: none;
+      z-index: 10001;
+    }
+  </style>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBoUv5YTd2ZalQ_mdkOVZF13ps_XYvmtBk",
+      authDomain: "shortage-tracker-f0054.firebaseapp.com",
+      projectId: "shortage-tracker-f0054",
+      storageBucket: "shortage-tracker-f0054.appspot.com",
+      messagingSenderId: "61596664058",
+      appId: "1:61596664058:web:77ee76208afe58a0b20943",
+      measurementId: "G-6FLDKD3PLH"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const yarmookList = document.getElementById("yarmookList");
+    const abuList = document.getElementById("abuList");
+    const alarm = document.getElementById("alarmSound");
+    const stopAlarmBtn = document.getElementById("stopAlarmBtn");
+    const langSwitch = document.getElementById("langSwitch");
+    const yarmookTitle = document.getElementById("yarmookTitle");
+    const abuTitle = document.getElementById("abuTitle");
+    const sendYarmookBtn = document.getElementById("sendYarmookBtn");
+    const sendAbuBtn = document.getElementById("sendAbuBtn");
+    const stopAlarmText = document.getElementById("stopAlarmBtn");
+
+    let lang = "ar";
+    let isFirstLoad = true;
+
+    const texts = {
+      ar: {
+        yarmook: "نواقص فرع اليرموك",
+        abu: "نواقص فرع أبو الحصانية",
+        sendYarmook: "إرسال نواقص اليرموك",
+        sendAbu: "إرسال نواقص أبو الحصانية",
+        stopAlarm: "إيقاف التنبيه",
+        whatsappMsgIntro: branch => `مرحبًا، نواقص ${branch} اليوم:`,
+        langSwitch: "English"
+      },
+      en: {
+        yarmook: "Yarmook Branch Shortages",
+        abu: "Abu Al-Hasaniya Branch Shortages",
+        sendYarmook: "Send Yarmook Shortages",
+        sendAbu: "Send Abu Shortages",
+        stopAlarm: "Stop Alarm",
+        whatsappMsgIntro: branch => `Hello, shortages at ${branch} today:`,
+        langSwitch: "العربية"
+      }
+    };
+
+    function updateTexts() {
+      if (lang === "ar") {
+        document.documentElement.lang = "ar";
+        document.documentElement.dir = "rtl";
+      } else {
+        document.documentElement.lang = "en";
+        document.documentElement.dir = "ltr";
+      }
+      yarmookTitle.textContent = texts[lang].yarmook;
+      abuTitle.textContent = texts[lang].abu;
+      sendYarmookBtn.textContent = texts[lang].sendYarmook;
+      sendAbuBtn.textContent = texts[lang].sendAbu;
+      stopAlarmText.textContent = texts[lang].stopAlarm;
+      langSwitch.textContent = texts[lang].langSwitch;
+    }
+
+    langSwitch.addEventListener("click", () => {
+      lang = lang === "ar" ? "en" : "ar";
+      updateTexts();
+      // re-render lists to update product info language
+      renderShortages("yarmook", yarmookList);
+      renderShortages("abuhasaniya", abuList);
+    });
+
+    function playAlarm() {
+      alarm.play();
+      stopAlarmBtn.style.display = "block";
+    }
+
+    stopAlarmBtn.addEventListener("click", () => {
+      alarm.pause();
+      alarm.currentTime = 0;
+      stopAlarmBtn.style.display = "none";
+    });
+
+    function renderShortages(branch, container) {
+      onSnapshot(collection(db, branch), snapshot => {
+        container.innerHTML = "";
+        if (!isFirstLoad) playAlarm();
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const card = document.createElement("div");
+          card.className = "product-card";
+          card.innerHTML = `
+            <div class="product-info">
+              <div>${lang === "ar" ? data.ar : data.en}</div>
+              <div class="en">${lang === "ar" ? data.en : data.ar}</div>
+              <div class="qty">${lang === "ar" ? "الكمية" : "Quantity"}: ${data.qty}</div>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+        isFirstLoad = false;
+      });
+    }
+
+    function sendWhatsApp(branch) {
+      let phone = branch === "yarmook" ? "96565162277" : "96599176512";
+      let branchName = lang === "ar"
+        ? (branch === "yarmook" ? "اليرموك" : "أبو الحصانية")
+        : (branch === "yarmook" ? "Yarmook" : "Abu Al-Hasaniya");
+
+      // Get all products text
+      const container = branch === "yarmook" ? yarmookList : abuList;
+      const products = Array.from(container.querySelectorAll(".product-info > div:first-child"));
+      if (products.length === 0) {
+        alert(lang === "ar" ? "لا توجد نواقص للإرسال" : "No shortages to send");
+        return;
+      }
+
+      let msg = texts[lang].whatsappMsgIntro(branchName) + "\n";
+      products.forEach((el) => {
+        const qtyDiv = el.nextElementSibling.nextElementSibling;
+        msg += "- " + el.textContent + " (" + qtyDiv.textContent + ")\n";
+      });
+
+      const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+      window.open(url, "_blank");
+    }
+
+    sendYarmookBtn.addEventListener("click", () => sendWhatsApp("yarmook"));
+    sendAbuBtn.addEventListener("click", () => sendWhatsApp("abuhasaniya"));
+
+    updateTexts();
+    renderShortages("yarmook", yarmookList);
+    renderShortages("abuhasaniya", abuList);
+  </script>
+</head>
+<body>
+  <header>
+    <button id="langSwitch" class="lang-switch">English</button>
+  </header>
+  <div class="branches-container">
+    <div class="branch-section">
+      <h2 id="yarmookTitle">نواقص فرع اليرموك</h2>
+      <div id="yarmookList"></div>
+      <button id="sendYarmookBtn" class="whatsapp-btn">إرسال نواقص اليرموك</button>
+    </div>
+    <div class="branch-section">
+      <h2 id="abuTitle">نواقص فرع أبو الحصانية</h2>
+      <div id="abuList"></div>
+      <button id="sendAbuBtn" class="whatsapp-btn">إرسال نواقص أبو الحصانية</button>
+    </div>
+  </div>
+  <audio id="alarmSound" src="alarm.mp3" loop></audio>
+  <button id="stopAlarmBtn">إيقاف التنبيه</button>
+</body>
+</html>

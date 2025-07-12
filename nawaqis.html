@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>طلب نواقص الحلويات</title>
+  <style>
+    body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f7f7f7; margin: 0; padding: 20px; }
+    h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
+    label, select, button { font-size: 1rem; }
+    table { width: 100%; max-width: 900px; margin: 20px auto; border-collapse: collapse; background: #fff; }
+    th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: right; vertical-align: middle; }
+    th { background-color: #3498db; color: white; }
+    select.quantity-select { width: 80px; padding: 5px; border-radius: 4px; border: 1px solid #aaa; text-align: center; }
+    #branchSelect { max-width: 300px; margin: 10px auto 0 auto; display: block; padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
+    #sendBtn {
+      display: block;
+      margin: 20px auto;
+      background-color: #25d366;
+      color: white;
+      border: none;
+      padding: 15px 25px;
+      font-size: 1.2rem;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    }
+    #sendBtn:disabled {
+      background-color: #95a5a6;
+      cursor: not-allowed;
+    }
+    #searchInput {
+      margin: 15px auto;
+      max-width: 400px;
+      display: block;
+      padding: 8px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    .product-name {
+      display: flex;
+      flex-direction: column;
+      text-align: right;
+    }
+    .product-en {
+      font-size: 0.85rem;
+      color: #666;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+<h1>طلب نواقص الحلويات</h1>
+<select id="branchSelect">
+  <option value="">-- اختر الفرع --</option>
+  <option value="Yarmook">يرموك</option>
+  <option value="Abu alhasaniya">أبو الحصانية</option>
+</select>
+
+<input type="text" id="searchInput" placeholder="ابحث عن منتج..." />
+
+<table id="productsTable">
+  <thead>
+    <tr><th>المنتج</th><th>الكمية المطلوبة</th></tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<button id="sendBtn" disabled>إرسال طلب النواقص</button>
+
+<!-- Firebase App (the core Firebase SDK) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<!-- Firebase Database -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+<script>
+  // إعدادات Firebase الخاصة بك (بدّلها بإعدادات مشروعك)
+  const firebaseConfig = {
+    apiKey: "AIzaSyBoUv5YTd2ZalQ_mdkOVZF13ps_XYvmtBk",
+    authDomain: "shortage-tracker-f0054.firebaseapp.com",
+    databaseURL: "https://shortage-tracker-f0054-default-rtdb.firebaseio.com",
+    projectId: "shortage-tracker-f0054",
+    storageBucket: "shortage-tracker-f0054.appspot.com",
+    messagingSenderId: "61596664058",
+    appId: "1:61596664058:web:77ee76208afe58a0b20943",
+    measurementId: "G-6FLDKD3PLH"
+  };
+
+  // تهيئة Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const products = [
+  {ar: "كعك فلسطيني", en: "Palestinian Kaak (½ kg)"},
+  {ar: "معمول تمر الحبوب الاربعة حبوب كاملة", en: "Date Maamoul with Four Whole Grains"},
+  {ar: "معمول تمر نجوم وهلال", en: "Date Ma'amoul in Star and Crescent Shapes"},
+  {ar: "معمول السندويشة", en: "Sandwich Maamoul"},
+  {ar: "معمول تمر نباتى", en: "Vegan Date Maamoul"},
+  {ar: "معمول التمر بالجوز", en: "Date and Walnut Maamoul"},
+  {ar: "معمول الشوفان", en: "Oatmeal Ma'amoul (1/2 kg)"},
+  {ar: "نصف كيلو معمول أصابع", en: "Maamoul Fingers (½ kg)"},
+  {ar: "قراقيش السماق", en: "Sumac Crackers"},
+  {ar: "قراقيش الكركم", en: "Turmeric Crackers"},
+  {ar: "قراقيش الشعير بالزعتر الاخضر", en: "Barley Crackers with Fresh Thyme"},
+  {ar: "قراقيش محمرة بالشمندر", en: "Beetroot Toast Crackers"},
+  {ar: "قراقيش الزعتر بزيت الزيتون", en: "Thyme Olive Oil Crackers"},
+  {ar: "قراقيش بصل اخضر و زيتون", en: "Spring Onion and Olive Crackers"},
+  {ar: "قراقيش الخضار بالثوم", en: "Vegetable Crackers with Garlic"},
+  {ar: "العصا الايطالي بالكينوا وبذور الشيا", en: "Italian Sticks with Quinoa and Chia Seeds"},
+  {ar: "عصا الخبز الايطالي بالزعتر", en: "Italian Breadsticks with Thyme"},
+  {ar: "عصا الخبز الايطالي بالحبوب الخمسة", en: "Italian Breadsticks with Five Grains"},
+  {ar: "عصا الخبز الايطالى بالشوفان واليانسون", en: "Oatmeal and Anise Italian Breadsticks"},
+  {ar: "شابورة جوز الهند", en: "Coconut Rusk"},
+  {ar: "شابورة الفواكة المجففة", en: "Rusk with Dried Fruits"},
+  {ar: "شابورة حبوب الدخن الخالية من الجلوتين", en: "Gluten-Free Millet Rusks"},
+  {ar: "بقصم الينسون", en: "Anise Rusks"},
+  {ar: "بقصم الزعتر", en: "Thyme Rusks"},
+  {ar: "بقصم لسان الثور", en: "Bull's Tongue Rusks"},
+  {ar: "حلقات الشيكولاتة الداكنة", en: "Dark Chocolate Rings"},
+  {ar: "بسكويت حلقات المربى (4حبات)", en: "Jam-Filled Biscuit Rings (4 Pieces)"},
+  {ar: "بسكويت الشيكولاتة بجوز الهند حبوب كاملة", en: "Whole Grain Chocolate and Coconut Biscuits"},
+  {ar: "حلقات السمسمية", en: "Sesame Rings"},
+  {ar: "حلقات السمسمية بالشيكولاتة", en: "Sesame Chocolate Rings"},
+  {ar: "كرات السمسم", en: "Sesame Balls"},
+  {ar: "كرات الشيكولاتة بالعسل والمكسرات", en: "Chocolate Balls with Honey and Nuts"},
+  {ar: "كرات الشيكولاتة بالمكسرات كيتو", en: "Keto Chocolate Nut Balls"},
+  {ar: "كوكيز الشوفان واللوز", en: "Oat and Almond Cookies"},
+  {ar: "كوكيز الشيكولاتة باليقطين والشوفان واللوز والفول", en: "Pumpkin and Almond Chocolate Cookies"},
+  {ar: "كوكيز كيتو", en: "Keto Cookies"},
+  {ar: "بسكويت تركي بالحنطة", en: "Turkish Biscuits with Barley and Black Seeds"},
+  {ar: "بسكويت تركي بالجاودر", en: "Turkish Biscuits with Caraway and Pumpkin Seeds"},
+  {ar: "بسكويت تركي بالشعير", en: "Turkish Barley Biscuits with Pumpkin and Sunflower Seeds"},
+  {ar: "بسكويت اليانسون حبوب كاملة", en: "Whole Grain Anise Biscuits"},
+  {ar: "بسكويت اليانسون النباتى", en: "Vegan Anise Biscuits"},
+  {ar: "بسكويت الدارسين حبوب كاملة", en: "Whole Grain Cinnamon Biscuits"},
+  {ar: "بسكويت قشر الليمون والبرتقال", en: "Lemon and Orange Peel Biscuits"},
+  {ar: "بسكويت الهيل", en: "Cardamom Biscuits"},
+  {ar: "بسكويت الزعتر بالحبوب الكاملة والخميرة الطبيعية", en: "Whole Grain Thyme Biscuits with Natural Yeast"},
+  {ar: "بسكويت ببذور الشيا", en: "Chia Seed Biscuits"},
+  {ar: "بسكويت بذور الكتان المبرعم", en: "Sprouted Flax Seed Biscuits"},
+  {ar: "بسكويت الحبوب الستة بالحبوب الكاملة", en: "Six-Grain Biscuits with Natural Yeast"},
+  {ar: "مقرمشات الحبوب المنوعة", en: "Mixed Grain Crackers"},
+  {ar: "برازق السمسم بالخميرة الطبيعية 3درزن", en: "Sesame Barazek with Natural Yeast (3 Dozen)"},
+  {ar: "البرازق بالفول السودانى", en: "Peanut Barazek"},
+  {ar: "الغريبة بالهيل", en: "Gharaiba with Cardamom"},
+  {ar: "غريبة بالدراسين", en: "Cinnamon Gharaiba"},
+  {ar: "معمول تمر صغير خالٍ من الجلوتين", en: "Small Gluten-Free Date Maamoul"},
+{ar: "بيتي فور أربع حبوب خالٍ من الجلوتين", en: "Gluten-Free Four-Grain Petit Fours"},
+{ar: "بيتي فور بالشوكولاتة الداكنة خالٍ من الجلوتين", en: "Gluten-Free Dark Chocolate Petit Four"},
+{ar: "بيتي فور باللوز خالٍ من الجلوتين", en: "Gluten-Free Almond Petit Four"},
+{ar: "بيتي فور بالتين خالٍ من الجلوتين", en: "Gluten-Free Fig Petit Four"},
+{ar: "بيتي فور بجوز الهند خالٍ من الجلوتين", en: "Gluten-Free Coconut Petit Four"},
+{ar: "بيتي فور بزبدة الفول السوداني خالٍ من الجلوتين", en: "Gluten-Free Peanut Butter Petit Four"},
+{ar: "بيتي فور بالزبيب خالٍ من الجلوتين", en: "Gluten-Free Raisin Petit Four"},
+{ar: "بيتي فور بعجينة المشمش – خالٍ من الجلوتين", en: "Apricot Paste Petit Four – Gluten-Free"},
+{ar: "بيتي فور بالمكسرات خالٍ من الجلوتين", en: "Gluten-Free Nut Petit Four"},
+{ar: "بيتي فور بالجوز خالٍ من الجلوتين", en: "Gluten-Free Walnut Petit Fours"},
+{ar: "برازق بالسمسم خالية من الجلوتين", en: "Gluten-Free Sesame Barazek"},
+{ar: "غريبة الدارسين خالي من الجلوتين", en: "Gluten-Free Cinnamon Ghraybeh"},
+{ar: "غريبة بالهيل والأرز الأسمر خالية من الجلوتين", en: "Gluten-Free Cardamom Ghraybeh with Brown Rice"},
+{ar: "بسكويت باليانسون خالٍ من الجلوتين", en: "Gluten-Free Anise Biscuits"},
+{ar: "بسكويت بجوز الهند والأرز البني والشوكولاتة الداكنة", en: "Brown Rice Coconut Dark Chocolate Biscuits"},
+{ar: "بسكويت كيتو صغير بجوز الهند (شكل قلب)", en: "Small Keto Coconut Biscuits (Heart)"},
+{ar: "بسكويت الهيل بالرز الأسمر الخالي من الجلوتين", en: "Gluten-Free Cardamom and Brown Rice Biscuits"},
+{ar: "بسكويت الدارسين الخالي من الجلوتين", en: "Gluten-Free Cinnamon Biscuits"},
+{ar: "بقصم الينسون خالي من الجلوتين", en: "Gluten-Free Anise Rusks"},
+{ar: "بقصم الزعتر خالي من الجلوتين", en: "Gluten-Free Thyme Rusks"},
+{ar: "حلوى الرياضيين بالفواكه المجففة حبوب كاملة", en: "Athlete’s Energy Bar with Dried Fruits and Whole Grains"},
+{ar: "حلوى الرياضيين بالشكولاتة الداكنة حبوب كاملة", en: "Athlete’s Energy Bar with Dark Chocolate and Whole Grains"},
+{ar: "حلوى الرياضيين بالتمر حبوب كاملة", en: "Whole Grain Date Energy Bars for Athletes"},
+{ar: "حلوى الرياضيين بالعسل حبوب كاملة", en: "Athlete’s Energy Bar with Honey and Whole Grains"},
+{ar: "حلوى الرياضيين بالشيكولاتة الداكنة الخالي من الجلوتين", en: "Gluten-Free Dark Chocolate Energy Bar for Athletes"},
+{ar: "حلوي الرياضيين بالتمر الخالي من الجلوتين", en: "Gluten-Free Date Energy Bar for Athletes"},
+{ar: "حلوى الرياضيين بالعسل الخالي من الجلوتين", en: "Gluten-Free Honey Energy Bar for Athletes"},
+{ar: "حلوي الرياضيين بالفواكه المجففة الخالي من الجلوتين", en: "Gluten-Free Dried Fruit Energy Bar for Athletes"},
+{ar: "بسكويت موالح الكيتو", en: "Keto Savory Biscuits-Mawalyah"}
+];
+
+  const productsTableBody = document.querySelector("#productsTable tbody");
+  const branchSelect = document.getElementById("branchSelect");
+  const sendBtn = document.getElementById("sendBtn");
+  const searchInput = document.getElementById("searchInput");
+
+  // دالة لإنشاء صفوف المنتجات مع اختيار الكمية
+  function renderProducts(filter = "") {
+    productsTableBody.innerHTML = "";
+    const filtered = products.filter(p => 
+      p.ar.includes(filter) || p.en.toLowerCase().includes(filter.toLowerCase())
+    );
+    filtered.forEach((product, index) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="product-name">
+          <div>${product.ar}</div>
+          <div class="product-en">${product.en}</div>
+        </td>
+        <td>
+          <select class="quantity-select" data-index="${index}">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+          </select>
+        </td>
+      `;
+      productsTableBody.appendChild(tr);
+    });
+  }
+
+  renderProducts();
+
+  // تحديث البحث
+  searchInput.addEventListener("input", () => {
+    renderProducts(searchInput.value);
+    updateSendButtonState();
+  });
+
+  // تمكين زر الإرسال فقط عند اختيار فرع ووجود كمية واحدة على الأقل
+  function updateSendButtonState() {
+    const branch = branchSelect.value;
+    if (!branch) {
+      sendBtn.disabled = true;
+      return;
+    }
+    const quantities = document.querySelectorAll(".quantity-select");
+    let hasQuantity = false;
+    for (const select of quantities) {
+      if (parseInt(select.value) > 0) {
+        hasQuantity = true;
+        break;
+      }
+    }
+    sendBtn.disabled = !hasQuantity;
+  }
+
+  branchSelect.addEventListener("change", updateSendButtonState);
+  productsTableBody.addEventListener("change", e => {
+    if (e.target.classList.contains("quantity-select")) {
+      updateSendButtonState();
+    }
+  });
+
+  // إرسال الطلب إلى Firebase
+  sendBtn.addEventListener("click", () => {
+    const branch = branchSelect.value;
+    if (!branch) {
+      alert("يرجى اختيار الفرع أولاً");
+      return;
+    }
+    const quantities = document.querySelectorAll(".quantity-select");
+    const order = {};
+    quantities.forEach(select => {
+      const qty = parseInt(select.value);
+      if (qty > 0) {
+        const idx = select.getAttribute("data-index");
+        order[products[idx].ar] = qty;
+      }
+    });
+
+    if (Object.keys(order).length === 0) {
+      alert("يرجى اختيار كمية واحدة على الأقل");
+      return;
+    }
+
+    const orderData = {
+      branch: branch,
+      order: order,
+      timestamp: Date.now()
+    };
+
+    // دالة لإنشاء مفتاح جديد ورفع البيانات
+    db.ref("orders").push(orderData)
+      .then(() => {
+        alert("تم إرسال طلب النواقص بنجاح");
+        // إعادة تعيين النموذج
+        branchSelect.value = "";
+        searchInput.value = "";
+        renderProducts();
+        updateSendButtonState();
+      })
+      .catch(error => {
+        alert("حدث خطأ أثناء إرسال الطلب: " + error.message);
+      });
+  });
+</script>
+
+</body>
+</html>
