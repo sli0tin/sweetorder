@@ -101,9 +101,6 @@
       align-items: center;
       z-index: 999;
     }
-    .modal.show {
-      display: flex !important;
-    }
     .modal-content {
       background: white;
       padding: 20px;
@@ -188,6 +185,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
 <script>
+  // إعدادات Firebase الخاصة بك
   const firebaseConfig = {
     apiKey: "AIzaSyBoUv5YTd2ZalQ_mdkOVZF13ps_XYvmtBk",
     authDomain: "shortage-tracker-f0054.firebaseapp.com",
@@ -199,9 +197,11 @@
     measurementId: "G-6FLDKD3PLH"
   };
 
+  // تهيئة Firebase
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
+  // قائمة المنتجات (أضف ما تشاء)
   const products = [
   {ar: "كعك فلسطيني", en: "Palestinian Kaak (½ kg)"},
   {ar: "معمول تمر الحبوب الاربعة حبوب كاملة", en: "Date Maamoul with Four Whole Grains"},
@@ -366,11 +366,11 @@
     });
 
     if (!branch || orderList.length === 0) return;
-    confirmModal.classList.add("show");
+    confirmModal.style.display = "flex";
   });
 
   cancelOrderBtn.addEventListener("click", () => {
-    confirmModal.classList.remove("show");
+    confirmModal.style.display = "none";
   });
 
   confirmOrderBtn.addEventListener("click", () => {
@@ -397,14 +397,16 @@
       timestamp: Date.now()
     };
 
+    // إرسال الطلب إلى Firebase
     db.ref("orders").push(orderData)
       .then(() => {
-        confirmModal.classList.remove("show");
+        confirmModal.style.display = "none";
         successTitle.textContent = `تم إرسال طلبك لنواقص فرع ${branch} بنجاح`;
         successSummary.innerHTML = orderList.map(p => `<li>${p.name} - ${p.qty}</li>`).join("");
         orderTime.textContent = new Date().toLocaleString("ar-EG");
-        successModal.classList.add("show");
+        successModal.style.display = "flex";
 
+        // إعادة تعيين النموذج
         branchSelect.value = "";
         searchInput.value = "";
         renderProducts();
@@ -416,9 +418,10 @@
   });
 
   closeSuccessBtn.addEventListener("click", () => {
-    successModal.classList.remove("show");
+    successModal.style.display = "none";
   });
 
+  // عرض المنتجات مباشرة عند تحميل الصفحة
   renderProducts();
 </script>
 
