@@ -18,9 +18,6 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       position: relative;
     }
-    header img {
-      max-height: 80px;
-    }
     .lang-switch {
       position: absolute;
       top: 10px;
@@ -49,6 +46,7 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
+      position: relative;
     }
     .branch-section h2 {
       text-align: center;
@@ -62,23 +60,44 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      cursor: default;
+    }
+    .product-card.red {
       background-color: #fdd;
+    }
+    .product-card.green {
+      background-color: #dfd;
     }
     .product-info {
       text-align: right;
+      max-width: 75%;
     }
     .product-info .en {
       font-size: 0.85rem;
       color: #555;
       font-style: italic;
     }
-    .product-info .qty {
+    .product-info .qty, .product-info .date {
       font-size: 0.85rem;
       color: #333;
       margin-top: 4px;
     }
+    .add-btn {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.3s ease;
+    }
+    .add-btn:hover {
+      background-color: #2980b9;
+    }
     .whatsapp-btn {
-      margin-top: 10px;
+      margin-top: auto;
       background: #25d366;
       color: white;
       border: none;
@@ -108,38 +127,30 @@
       z-index: 10001;
     }
   </style>
-  <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    const firebaseConfig = {
+    const app = initializeApp({
       apiKey: "AIzaSyBoUv5YTd2ZalQ_mdkOVZF13ps_XYvmtBk",
       authDomain: "shortage-tracker-f0054.firebaseapp.com",
       projectId: "shortage-tracker-f0054",
       storageBucket: "shortage-tracker-f0054.appspot.com",
       messagingSenderId: "61596664058",
-      appId: "1:61596664058:web:77ee76208afe58a0b20943",
-      measurementId: "G-6FLDKD3PLH"
-    };
+      appId: "1:61596664058:web:77ee76208afe58a0b20943"
+    });
 
-    const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const yarmookList = document.getElementById("yarmookList");
-    const abuList = document.getElementById("abuList");
-    const alarm = document.getElementById("alarmSound");
+    const alarmSound = document.getElementById("alarmSound");
     const stopAlarmBtn = document.getElementById("stopAlarmBtn");
     const langSwitch = document.getElementById("langSwitch");
     const yarmookTitle = document.getElementById("yarmookTitle");
     const abuTitle = document.getElementById("abuTitle");
-    const sendYarmookBtn = document.getElementById("sendYarmookBtn");
-    const sendAbuBtn = document.getElementById("sendAbuBtn");
-    const stopAlarmText = document.getElementById("stopAlarmBtn");
+    const yarmookBtn = document.getElementById("yarmookBtn");
+    const abuBtn = document.getElementById("abuBtn");
 
     let lang = "ar";
-    let isFirstLoad = true;
-
     const texts = {
       ar: {
         yarmook: "نواقص فرع اليرموك",
@@ -147,7 +158,6 @@
         sendYarmook: "إرسال نواقص اليرموك",
         sendAbu: "إرسال نواقص أبو الحصانية",
         stopAlarm: "إيقاف التنبيه",
-        whatsappMsgIntro: branch => `مرحبًا، نواقص ${branch} اليوم:`,
         langSwitch: "English"
       },
       en: {
@@ -156,97 +166,61 @@
         sendYarmook: "Send Yarmook Shortages",
         sendAbu: "Send Abu Shortages",
         stopAlarm: "Stop Alarm",
-        whatsappMsgIntro: branch => `Hello, shortages at ${branch} today:`,
         langSwitch: "العربية"
       }
     };
 
     function updateTexts() {
-      if (lang === "ar") {
-        document.documentElement.lang = "ar";
-        document.documentElement.dir = "rtl";
-      } else {
-        document.documentElement.lang = "en";
-        document.documentElement.dir = "ltr";
-      }
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+      langSwitch.textContent = texts[lang].langSwitch;
       yarmookTitle.textContent = texts[lang].yarmook;
       abuTitle.textContent = texts[lang].abu;
-      sendYarmookBtn.textContent = texts[lang].sendYarmook;
-      sendAbuBtn.textContent = texts[lang].sendAbu;
-      stopAlarmText.textContent = texts[lang].stopAlarm;
-      langSwitch.textContent = texts[lang].langSwitch;
+      yarmookBtn.textContent = texts[lang].sendYarmook;
+      abuBtn.textContent = texts[lang].sendAbu;
+      stopAlarmBtn.textContent = texts[lang].stopAlarm;
     }
 
-    langSwitch.addEventListener("click", () => {
+    langSwitch.onclick = () => {
       lang = lang === "ar" ? "en" : "ar";
       updateTexts();
-      // re-render lists to update product info language
-      renderShortages("yarmook", yarmookList);
-      renderShortages("abuhasaniya", abuList);
-    });
+    };
+
+    let isFirstLoad = true;
+    let prevYarmookIds = [];
+    let prevAbuIds = [];
 
     function playAlarm() {
-      alarm.play();
+      alarmSound.play();
       stopAlarmBtn.style.display = "block";
     }
 
-    stopAlarmBtn.addEventListener("click", () => {
-      alarm.pause();
-      alarm.currentTime = 0;
+    stopAlarmBtn.onclick = () => {
+      alarmSound.pause();
+      alarmSound.currentTime = 0;
       stopAlarmBtn.style.display = "none";
+    };
+
+    function checkNewData(snapshot, prevIds) {
+      const currentIds = snapshot.docs.map(doc => doc.id);
+      const hasNew = currentIds.some(id => !prevIds.includes(id));
+      return { currentIds, hasNew };
+    }
+
+    onSnapshot(collection(db, "yarmook"), snapshot => {
+      const { currentIds, hasNew } = checkNewData(snapshot, prevYarmookIds);
+      if (!isFirstLoad && hasNew) playAlarm();
+      prevYarmookIds = currentIds;
     });
 
-    function renderShortages(branch, container) {
-      onSnapshot(collection(db, branch), snapshot => {
-        container.innerHTML = "";
-        if (!isFirstLoad) playAlarm();
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const card = document.createElement("div");
-          card.className = "product-card";
-          card.innerHTML = `
-            <div class="product-info">
-              <div>${lang === "ar" ? data.ar : data.en}</div>
-              <div class="en">${lang === "ar" ? data.en : data.ar}</div>
-              <div class="qty">${lang === "ar" ? "الكمية" : "Quantity"}: ${data.qty}</div>
-            </div>
-          `;
-          container.appendChild(card);
-        });
-        isFirstLoad = false;
-      });
-    }
-
-    function sendWhatsApp(branch) {
-      let phone = branch === "yarmook" ? "96565162277" : "96599176512";
-      let branchName = lang === "ar"
-        ? (branch === "yarmook" ? "اليرموك" : "أبو الحصانية")
-        : (branch === "yarmook" ? "Yarmook" : "Abu Al-Hasaniya");
-
-      // Get all products text
-      const container = branch === "yarmook" ? yarmookList : abuList;
-      const products = Array.from(container.querySelectorAll(".product-info > div:first-child"));
-      if (products.length === 0) {
-        alert(lang === "ar" ? "لا توجد نواقص للإرسال" : "No shortages to send");
-        return;
-      }
-
-      let msg = texts[lang].whatsappMsgIntro(branchName) + "\n";
-      products.forEach((el) => {
-        const qtyDiv = el.nextElementSibling.nextElementSibling;
-        msg += "- " + el.textContent + " (" + qtyDiv.textContent + ")\n";
-      });
-
-      const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-      window.open(url, "_blank");
-    }
-
-    sendYarmookBtn.addEventListener("click", () => sendWhatsApp("yarmook"));
-    sendAbuBtn.addEventListener("click", () => sendWhatsApp("abuhasaniya"));
+    onSnapshot(collection(db, "abuhasaniya"), snapshot => {
+      const { currentIds, hasNew } = checkNewData(snapshot, prevAbuIds);
+      if (!isFirstLoad && hasNew) playAlarm();
+      prevAbuIds = currentIds;
+      isFirstLoad = false;
+    });
 
     updateTexts();
-    renderShortages("yarmook", yarmookList);
-    renderShortages("abuhasaniya", abuList);
   </script>
 </head>
 <body>
@@ -257,14 +231,15 @@
     <div class="branch-section">
       <h2 id="yarmookTitle">نواقص فرع اليرموك</h2>
       <div id="yarmookList"></div>
-      <button id="sendYarmookBtn" class="whatsapp-btn">إرسال نواقص اليرموك</button>
+      <button id="yarmookBtn" class="whatsapp-btn">إرسال نواقص اليرموك</button>
     </div>
     <div class="branch-section">
       <h2 id="abuTitle">نواقص فرع أبو الحصانية</h2>
       <div id="abuList"></div>
-      <button id="sendAbuBtn" class="whatsapp-btn">إرسال نواقص أبو الحصانية</button>
+      <button id="abuBtn" class="whatsapp-btn">إرسال نواقص أبو الحصانية</button>
     </div>
   </div>
+
   <audio id="alarmSound" src="alarm.mp3" loop></audio>
   <button id="stopAlarmBtn">إيقاف التنبيه</button>
 </body>
