@@ -5,17 +5,58 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>طلب نواقص الحلويات</title>
   <style>
-    body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #f7f7f7; margin: 0; padding: 20px; }
-    h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
-    label, select, button { font-size: 1rem; }
-    table { width: 100%; max-width: 900px; margin: 20px auto; border-collapse: collapse; background: #fff; }
-    th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: right; vertical-align: middle; }
-    th { background-color: #3498db; color: white; }
-    select.quantity-select { width: 80px; padding: 5px; border-radius: 4px; border: 1px solid #aaa; text-align: center; }
-    #branchSelect { max-width: 300px; margin: 10px auto 0 auto; display: block; padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
-    #sendBtn {
-      display: block;
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 20px;
+      position: relative;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+    label, select, button {
+      font-size: 1rem;
+    }
+    table {
+      width: 100%;
+      max-width: 900px;
       margin: 20px auto;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: right;
+      vertical-align: middle;
+    }
+    th {
+      background-color: #3498db;
+      color: white;
+    }
+    select.quantity-select {
+      width: 80px;
+      padding: 5px;
+      border-radius: 4px;
+      border: 1px solid #aaa;
+      text-align: center;
+    }
+    #branchSelect {
+      max-width: 300px;
+      margin: 10px auto 0 auto;
+      display: block;
+      padding: 8px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    #sendBtn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
       background-color: #25d366;
       color: white;
       border: none;
@@ -48,6 +89,59 @@
       color: #666;
       font-style: italic;
     }
+    .modal {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+    .modal.show {
+      display: flex !important;
+    }
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 500px;
+      text-align: center;
+    }
+    .modal-content h2 {
+      margin-bottom: 15px;
+    }
+    .modal-content ul {
+      text-align: right;
+      padding-right: 20px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      list-style: none;
+    }
+    .modal-content ul li {
+      margin-bottom: 8px;
+    }
+    .modal-content button {
+      margin: 5px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .confirm-btn {
+      background-color: #27ae60;
+      color: white;
+    }
+    .cancel-btn, .close-btn {
+      background-color: #c0392b;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -55,8 +149,8 @@
 <h1>طلب نواقص الحلويات</h1>
 <select id="branchSelect">
   <option value="">-- اختر الفرع --</option>
-  <option value="Yarmook">يرموك</option>
-  <option value="Abu alhasaniya">أبو الحصانية</option>
+  <option value="يرموك">يرموك</option>
+  <option value="أبو الحصانية">أبو الحصانية</option>
 </select>
 
 <input type="text" id="searchInput" placeholder="ابحث عن منتج..." />
@@ -70,13 +164,30 @@
 
 <button id="sendBtn" disabled>إرسال طلب النواقص</button>
 
+<div id="confirmModal" class="modal">
+  <div class="modal-content">
+    <h2>يرجى مراجعة الطلب</h2>
+    <ul id="orderSummary"></ul>
+    <button class="confirm-btn" id="confirmOrder">تأكيد</button>
+    <button class="cancel-btn" id="cancelOrder">إلغاء</button>
+  </div>
+</div>
+
+<div id="successModal" class="modal">
+  <div class="modal-content">
+    <h2 id="successTitle"></h2>
+    <ul id="successSummary"></ul>
+    <p id="orderTime"></p>
+    <button class="close-btn" id="closeSuccess">حسنًا</button>
+  </div>
+</div>
+
 <!-- Firebase App (the core Firebase SDK) -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <!-- Firebase Database -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
 <script>
-  // إعدادات Firebase الخاصة بك (بدّلها بإعدادات مشروعك)
   const firebaseConfig = {
     apiKey: "AIzaSyBoUv5YTd2ZalQ_mdkOVZF13ps_XYvmtBk",
     authDomain: "shortage-tracker-f0054.firebaseapp.com",
@@ -88,7 +199,6 @@
     measurementId: "G-6FLDKD3PLH"
   };
 
-  // تهيئة Firebase
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
@@ -182,13 +292,19 @@
   const branchSelect = document.getElementById("branchSelect");
   const sendBtn = document.getElementById("sendBtn");
   const searchInput = document.getElementById("searchInput");
+  const confirmModal = document.getElementById("confirmModal");
+  const successModal = document.getElementById("successModal");
+  const orderSummary = document.getElementById("orderSummary");
+  const successSummary = document.getElementById("successSummary");
+  const orderTime = document.getElementById("orderTime");
+  const successTitle = document.getElementById("successTitle");
+  const confirmOrderBtn = document.getElementById("confirmOrder");
+  const cancelOrderBtn = document.getElementById("cancelOrder");
+  const closeSuccessBtn = document.getElementById("closeSuccess");
 
-  // دالة لإنشاء صفوف المنتجات مع اختيار الكمية
   function renderProducts(filter = "") {
     productsTableBody.innerHTML = "";
-    const filtered = products.filter(p => 
-      p.ar.includes(filter) || p.en.toLowerCase().includes(filter.toLowerCase())
-    );
+    const filtered = products.filter(p => p.ar.includes(filter) || p.en.toLowerCase().includes(filter.toLowerCase()));
     filtered.forEach((product, index) => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
@@ -198,38 +314,15 @@
         </td>
         <td>
           <select class="quantity-select" data-index="${index}">
-            <option value="0">0</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
+            ${[...Array(10).keys()].map(i => `<option value="${i}">${i}</option>`).join("")}
           </select>
-        </td>
-      `;
+        </td>`;
       productsTableBody.appendChild(tr);
     });
   }
 
-  renderProducts();
-
-  // تحديث البحث
-  searchInput.addEventListener("input", () => {
-    renderProducts(searchInput.value);
-    updateSendButtonState();
-  });
-
-  // تمكين زر الإرسال فقط عند اختيار فرع ووجود كمية واحدة على الأقل
   function updateSendButtonState() {
     const branch = branchSelect.value;
-    if (!branch) {
-      sendBtn.disabled = true;
-      return;
-    }
     const quantities = document.querySelectorAll(".quantity-select");
     let hasQuantity = false;
     for (const select of quantities) {
@@ -238,49 +331,80 @@
         break;
       }
     }
-    sendBtn.disabled = !hasQuantity;
+    sendBtn.disabled = !(branch && hasQuantity);
   }
 
+  searchInput.addEventListener("input", () => {
+    renderProducts(searchInput.value);
+    updateSendButtonState();
+  });
+
   branchSelect.addEventListener("change", updateSendButtonState);
+
   productsTableBody.addEventListener("change", e => {
     if (e.target.classList.contains("quantity-select")) {
       updateSendButtonState();
     }
   });
 
-  // إرسال الطلب إلى Firebase
   sendBtn.addEventListener("click", () => {
     const branch = branchSelect.value;
-    if (!branch) {
-      alert("يرجى اختيار الفرع أولاً");
-      return;
-    }
     const quantities = document.querySelectorAll(".quantity-select");
-    const order = {};
+    orderSummary.innerHTML = "";
+    const orderList = [];
+
     quantities.forEach(select => {
       const qty = parseInt(select.value);
       if (qty > 0) {
         const idx = select.getAttribute("data-index");
-        order[products[idx].ar] = qty;
+        const productName = products[idx].ar;
+        orderList.push({ name: productName, qty });
+        const li = document.createElement("li");
+        li.textContent = `${productName} - ${qty}`;
+        orderSummary.appendChild(li);
       }
     });
 
-    if (Object.keys(order).length === 0) {
-      alert("يرجى اختيار كمية واحدة على الأقل");
-      return;
-    }
+    if (!branch || orderList.length === 0) return;
+    confirmModal.classList.add("show");
+  });
+
+  cancelOrderBtn.addEventListener("click", () => {
+    confirmModal.classList.remove("show");
+  });
+
+  confirmOrderBtn.addEventListener("click", () => {
+    const branch = branchSelect.value;
+    const quantities = document.querySelectorAll(".quantity-select");
+    const orderList = [];
+
+    quantities.forEach(select => {
+      const qty = parseInt(select.value);
+      if (qty > 0) {
+        const idx = select.getAttribute("data-index");
+        orderList.push({ name: products[idx].ar, qty });
+      }
+    });
+
+    if (!branch || orderList.length === 0) return;
+
+    const orderObj = {};
+    orderList.forEach(p => orderObj[p.name] = p.qty);
 
     const orderData = {
       branch: branch,
-      order: order,
+      order: orderObj,
       timestamp: Date.now()
     };
 
-    // دالة لإنشاء مفتاح جديد ورفع البيانات
     db.ref("orders").push(orderData)
       .then(() => {
-        alert("تم إرسال طلب النواقص بنجاح");
-        // إعادة تعيين النموذج
+        confirmModal.classList.remove("show");
+        successTitle.textContent = `تم إرسال طلبك لنواقص فرع ${branch} بنجاح`;
+        successSummary.innerHTML = orderList.map(p => `<li>${p.name} - ${p.qty}</li>`).join("");
+        orderTime.textContent = new Date().toLocaleString("ar-EG");
+        successModal.classList.add("show");
+
         branchSelect.value = "";
         searchInput.value = "";
         renderProducts();
@@ -290,6 +414,12 @@
         alert("حدث خطأ أثناء إرسال الطلب: " + error.message);
       });
   });
+
+  closeSuccessBtn.addEventListener("click", () => {
+    successModal.classList.remove("show");
+  });
+
+  renderProducts();
 </script>
 
 </body>
