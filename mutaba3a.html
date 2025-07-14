@@ -309,10 +309,6 @@
   const yarmookSendBtn = document.getElementById("yarmookSendBtn");
   const abuSendBtn = document.getElementById("abuSendBtn");
 
-  // الصوت والتنبيه
-  const alarmSound = document.getElementById("alarmSound");
-  const stopAlarmBtn = document.getElementById("stopAlarmBtn");
-
   // نافذة اختيار الكمية
   const quantityModal = document.getElementById("quantityModal");
   const quantitySelect = document.getElementById("quantitySelect");
@@ -402,19 +398,19 @@
     for(const [productName, {requested, added}] of Object.entries(branchOrders)){
       const en = translations[productName] || "";
       if(added > 0){
-        greenProducts.push(`${productName} (${en}) - ${added}`);
+        greenProducts.push(`${productName} - ${added}`);
       }
       const remaining = requested - added;
       if(remaining > 0){
-        redProducts.push(`${productName} (${en}) - ${remaining}`);
+        redProducts.push(`${productName} - ${remaining}`);
       }
     }
 
-    const message = `مرحباً، فرع ${branchName} | Hello, branch ${branchName}\n` +
-      "المنتجات التي سيتم ارسالها اليوم هي التالي: | Products to be sent today:\n" +
+    const message = `مرحباً، فرع ${branchName}\n` +
+      "المنتجات التي سيتم ارسالها اليوم هي التالي:\n" +
       greenProducts.join("\n") + "\n" +
       "---------\n" +
-      "المنتجات التي سيتم ارسالها عند التجهيز: | Products to be sent later:\n" +
+      "المنتجات التي سيتم ارسالها عند التجهيز:\n" +
       redProducts.join("\n");
 
     const encodedMsg = encodeURIComponent(message);
@@ -562,11 +558,6 @@
   </section>
 
 </div>
-
-<audio id="alarmSound" loop>
-  <source src="alarm.mp3" type="audio/mpeg">
-  متصفحك لا يدعم الصوت.
-</audio>
 
 <button id="stopAlarmBtn">ايقاف التنبيه</button>
 
